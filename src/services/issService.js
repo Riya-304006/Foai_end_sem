@@ -12,16 +12,25 @@ export const issService = {
    * Fetch current ISS location.
    */
   async fetchISSLocation() {
+    const isLocal = window.location.hostname === 'localhost';
+    const endpoint = isLocal ? ISS_NOW_URL : '/.netlify/functions/iss-location';
+
     const now = Date.now();
-    if (now - lastFetchTime < MIN_FETCH_INTERVAL) {
-      console.warn('ISS API: Throttling request to stay under rate limit.');
-      return null; // Skip this poll, wait for next one
+    // Only throttle locally; production is handled by Edge Cache
+    if (isLocal && (now - lastFetchTime < MIN_FETCH_INTERVAL)) {
+      return null;
     }
     
     lastFetchTime = now;
     
     try {
-      const data = await fetchData(ISS_NOW_URL);
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `ISS API failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
       if (data && data.latitude !== undefined) {
         return {
           latitude: parseFloat(data.latitude),
@@ -33,9 +42,7 @@ export const issService = {
       }
       throw new Error('Invalid data format from ISS API');
     } catch (err) {
-      if (err.message.includes('429')) {
-        console.error('ISS API: Rate limited. Suggest increasing polling interval.');
-      }
+      console.error('ISS Fetch Error:', err.message);
       throw err;
     }
   },
