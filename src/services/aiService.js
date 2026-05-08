@@ -57,39 +57,47 @@ function formatHistory(messages, contextData) {
   return formatted;
 }
 
+import { HfInference } from '@huggingface/inference';
+
+const MODEL_ID = 'mistralai/Mistral-7B-Instruct-v0.2';
+
+// ... buildSystemPrompt and formatHistory stay the same ...
+
 export const aiService = {
   /**
    * Send a chat request. 
-   * Now uses an internal Netlify function to proxy the request for better reliability.
+   * Uses an internal Netlify function in production, and HfInference SDK in local dev.
    */
   async sendChat(messages, contextData) {
     try {
-      // In local dev, we might still want to hit HF directly if functions aren't running,
-      // but for production reliability, we hit our own endpoint.
       const isLocal = window.location.hostname === 'localhost';
-      const endpoint = isLocal ? API_URL : '/.netlify/functions/chat';
       
-      const headers = { 'Content-Type': 'application/json' };
-      
-      // If hitting HF directly (local), we need the token in headers
       if (isLocal) {
         const token = import.meta.env.VITE_AI_TOKEN?.trim();
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (!token || token === 'your_huggingface_token') {
+          throw new Error('AI Token is missing. Please add VITE_AI_TOKEN to your .env file.');
+        }
+
+        const hf = new HfInference(token);
+        const prompt = formatHistory(messages, contextData);
+
+        const result = await hf.textGeneration({
+          model: MODEL_ID,
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 150,
+            temperature: 0.1,
+            return_full_text: false,
+          },
+        });
+        return result.generated_text.trim();
       }
 
-      const response = await fetch(endpoint, {
+      // Production: Hit our own Netlify Function proxy
+      const response = await fetch('/.netlify/functions/chat', {
         method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          messages,
-          contextData,
-          // If local, we pass the prompt format HF expects
-          ...(isLocal && { 
-            inputs: formatHistory(messages, contextData),
-            parameters: { max_new_tokens: 150, temperature: 0.1, return_full_text: false },
-            options: { wait_for_model: true }
-          })
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, contextData }),
       });
 
       if (!response.ok) {
@@ -98,24 +106,12 @@ export const aiService = {
       }
 
       const data = await response.json();
-      
-      // Handle response format from both HF (direct) and our Proxy
-      if (Array.isArray(data) && data[0]?.generated_text) {
-        return data[0].generated_text.trim();
-      }
-      if (data.generated_text) {
-        return data.generated_text.trim();
-      }
-      // If we used a chat completion format in the proxy
-      if (data.choices?.[0]?.message?.content) {
-        return data.choices[0].message.content.trim();
-      }
+      return data.generated_text.trim();
 
-      throw new Error('Invalid response format from AI.');
     } catch (error) {
       console.error('AI Service Error:', error);
       if (error.message === 'Failed to fetch') {
-        throw new Error('Connection error. If you have an ad-blocker, please disable it for this site or check your connection.');
+        throw new Error('Connection error. If you have an ad-blocker, please disable it for this site.');
       }
       throw error;
     }
