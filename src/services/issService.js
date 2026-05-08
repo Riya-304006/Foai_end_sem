@@ -24,41 +24,74 @@ export const issService = {
     lastFetchTime = now;
     
     try {
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `ISS API failed with status ${response.status}`);
+      // 1. Try Proxy (with Edge Caching)
+      try {
+        const response = await fetch(endpoint);
+        if (response.ok) {
+          const data = await response.json();
+          return parseISSData(data);
+        }
+      } catch (e) {
+        console.warn('Proxy failed, trying direct fetch...', e.message);
       }
 
-      const data = await response.json();
+      // 2. Try Direct OpenNotify (Very lenient)
+      try {
+        const response = await fetch('https://api.open-notify.org/iss-now.json');
+        if (response.ok) {
+          const data = await response.json();
+          return parseISSData(data);
+        }
+      } catch (e) {
+        console.warn('Direct OpenNotify failed, trying direct fallback...', e.message);
+      }
+
+      // 3. Last Resort: Direct Wheretheiss
+      const response = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+      if (response.ok) {
+        const data = await response.json();
+        return parseISSData(data);
+      }
       
-      // Handle OpenNotify format
-      if (data && data.iss_position) {
-        return {
-          latitude: parseFloat(data.iss_position.latitude),
-          longitude: parseFloat(data.iss_position.longitude),
-          velocity: 27550 + Math.random() * 100, // Simulated
-          altitude: 408 + Math.random() * 5,    // Simulated
-          timestamp: data.timestamp,
-        };
-      }
+      throw new Error(`All ISS API sources failed (Last status: ${response.status})`);
 
-      // Handle Wheretheiss format (fallback)
-      if (data && data.latitude !== undefined) {
-        return {
-          latitude: parseFloat(data.latitude),
-          longitude: parseFloat(data.longitude),
-          velocity: parseFloat(data.velocity),
-          altitude: parseFloat(data.altitude),
-          timestamp: data.timestamp,
-        };
-      }
-      throw new Error('Invalid data format from ISS API');
     } catch (err) {
-      console.error('ISS Fetch Error:', err.message);
+      console.error('ISS Fetch Fatal Error:', err.message);
       throw err;
     }
   },
+};
+
+/**
+ * Helper to parse different ISS API formats
+ */
+function parseISSData(data) {
+  if (!data) return null;
+
+  // OpenNotify format
+  if (data.iss_position) {
+    return {
+      latitude: parseFloat(data.iss_position.latitude),
+      longitude: parseFloat(data.iss_position.longitude),
+      velocity: 27550 + Math.random() * 100,
+      altitude: 408 + Math.random() * 5,
+      timestamp: data.timestamp,
+    };
+  }
+
+  // Wheretheiss format
+  if (data.latitude !== undefined) {
+    return {
+      latitude: parseFloat(data.latitude),
+      longitude: parseFloat(data.longitude),
+      velocity: parseFloat(data.velocity),
+      altitude: parseFloat(data.altitude),
+      timestamp: data.timestamp,
+    };
+  }
+
+  return null;
+}
 
   /**
    * Fetch list of people currently in space.

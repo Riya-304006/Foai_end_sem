@@ -1,6 +1,4 @@
-import fetch from 'node-fetch';
-
-const OPEN_NOTIFY_URL = 'http://api.open-notify.org/iss-now.json';
+const OPEN_NOTIFY_URL = 'https://api.open-notify.org/iss-now.json';
 const WHERETHEISS_URL = 'https://api.wheretheiss.at/v1/satellites/25544';
 
 export async function handler(event) {

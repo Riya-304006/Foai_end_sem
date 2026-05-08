@@ -43,9 +43,11 @@ export function ISSProvider({ children }) {
         return updated.slice(-MAX_HISTORY);
       });
     } catch (err) {
-      console.error('ISS Poll Error:', err);
-      // Don't set loading false here if we already have data, just update error
-      setError(err.message || 'API error');
+      console.warn('ISS Poll Warning (Retrying):', err.message);
+      // Only show a critical error if we don't have any location data yet
+      if (!location.latitude) {
+        setError(err.message || 'Connecting to ISS telemetry...');
+      }
     } finally {
       setLoading(false);
     }
