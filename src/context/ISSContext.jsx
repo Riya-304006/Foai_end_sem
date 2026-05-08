@@ -3,7 +3,7 @@ import { issService } from '../services/issService';
 
 const ISSContext = createContext();
 
-const POLL_INTERVAL = 15000; // 15 seconds
+const POLL_INTERVAL = 20000; // 20 seconds
 const MAX_HISTORY = 20;
 
 export function ISSProvider({ children }) {
@@ -21,6 +21,10 @@ export function ISSProvider({ children }) {
   const fetchLocation = useCallback(async () => {
     try {
       const data = await issService.fetchISSLocation();
+      
+      // If service throttled the request, just skip this cycle
+      if (!data) return;
+
       const newLoc = {
         latitude: data.latitude,
         longitude: data.longitude,
