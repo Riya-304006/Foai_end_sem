@@ -1,7 +1,7 @@
 import { fetchData } from '../utils/apiHelpers';
 
-const ISS_NOW_URL = 'http://api.open-notify.org/iss-now.json';
-const ASTROS_URL = 'http://api.open-notify.org/astros.json';
+const ISS_NOW_URL = 'https://api.wheretheiss.at/v1/satellites/25544';
+const ASTROS_URL = 'https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json';
 
 export const issService = {
   /**
@@ -10,10 +10,10 @@ export const issService = {
    */
   async fetchISSLocation() {
     const data = await fetchData(ISS_NOW_URL);
-    if (data.message === 'success') {
+    if (data && data.latitude && data.longitude) {
       return {
-        latitude: parseFloat(data.iss_position.latitude),
-        longitude: parseFloat(data.iss_position.longitude),
+        latitude: parseFloat(data.latitude),
+        longitude: parseFloat(data.longitude),
         timestamp: data.timestamp,
       };
     }
@@ -26,10 +26,10 @@ export const issService = {
    */
   async fetchAstronauts() {
     const data = await fetchData(ASTROS_URL);
-    if (data.message === 'success') {
+    if (data && data.people) {
       return {
         count: data.number,
-        people: data.people,
+        people: data.people.map(p => ({ name: p.name, craft: p.spacecraft || 'ISS' })),
       };
     }
     throw new Error('Unsuccessful response from Astronauts API');
