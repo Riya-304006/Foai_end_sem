@@ -1,7 +1,7 @@
 import { Bot, MessageSquare, X, Send, Trash2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '../hooks/useChat';
-import { useISSLocation } from '../hooks/useISSLocation';
+import { useISSContext } from '../context/ISSContext';
 import { useISSSpeed } from '../hooks/useISSSpeed';
 import { useAstronauts } from '../hooks/useAstronauts';
 import { useNews } from '../hooks/useNews';
@@ -12,7 +12,7 @@ export default function ChatWindow() {
   const messagesEndRef = useRef(null);
 
   // Context Hooks
-  const { location, lastUpdated } = useISSLocation();
+  const { location, lastUpdated } = useISSContext();
   const { currentSpeed } = useISSSpeed(location, lastUpdated);
   const { count: astronautsCount } = useAstronauts();
   const { articles } = useNews();

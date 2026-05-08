@@ -1,14 +1,12 @@
 import { Satellite, RefreshCw, MapPin, Zap, Users, Globe2, Clock, Navigation, History } from 'lucide-react';
 import ISSCard from '../components/ISSCard';
-import { useISSLocation } from '../hooks/useISSLocation';
-import { useISSHistory } from '../hooks/useISSHistory';
+import { useISSContext } from '../context/ISSContext';
 import { useAstronauts } from '../hooks/useAstronauts';
 import ISSMap from '../map/ISSMap';
 import VelocityChart from '../components/VelocityChart';
 
 export default function ISSTracker() {
-  const { location, loading: locationLoading, error: locationError, lastUpdated, refreshLocation } = useISSLocation();
-  const history = useISSHistory(location);
+  const { location, history, loading: locationLoading, error: locationError, lastUpdated, refreshLocation } = useISSContext();
   const { count, people, loading: crewLoading, error: crewError, refresh: refreshCrew } = useAstronauts();
 
   const handleRefresh = () => {

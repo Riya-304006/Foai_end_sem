@@ -7,26 +7,26 @@ import NewsDashboard from './pages/NewsDashboard';
 import Chatbot from './pages/Chatbot';
 import Charts from './pages/Charts';
 import ChatWindow from './components/ChatWindow';
+import { ISSProvider } from './context/ISSContext';
 import './index.css';
-
-import MissionControl from './pages/MissionControl';
 
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
         <ToastProvider>
-          <Routes>
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<MissionControl />} />
-              <Route path="tracker" element={<ISSTracker />} />
-              <Route path="news" element={<NewsDashboard />} />
-              <Route path="chatbot" element={<Chatbot />} />
-              <Route path="charts" element={<Charts />} />
-            </Route>
-          </Routes>
-          {/* Floating chatbot widget — visible on all pages */}
-          <ChatWindow />
+          <ISSProvider>
+            <Routes>
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<ISSTracker />} />
+                <Route path="news" element={<NewsDashboard />} />
+                <Route path="chatbot" element={<Chatbot />} />
+                <Route path="charts" element={<Charts />} />
+              </Route>
+            </Routes>
+            {/* Floating chatbot widget — visible on all pages */}
+            <ChatWindow />
+          </ISSProvider>
         </ToastProvider>
       </ThemeProvider>
     </BrowserRouter>
