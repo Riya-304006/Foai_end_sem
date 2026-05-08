@@ -1,6 +1,6 @@
 import { fetchData } from '../utils/apiHelpers';
 
-const ISS_NOW_URL = 'https://api.wheretheiss.at/v1/satellites/25544';
+const ISS_NOW_URL = 'https://api.open-notify.org/iss-now.json';
 const ASTROS_URL = 'https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json';
 
 // Simple rate limit protection
@@ -31,6 +31,19 @@ export const issService = {
       }
 
       const data = await response.json();
+      
+      // Handle OpenNotify format
+      if (data && data.iss_position) {
+        return {
+          latitude: parseFloat(data.iss_position.latitude),
+          longitude: parseFloat(data.iss_position.longitude),
+          velocity: 27550 + Math.random() * 100, // Simulated
+          altitude: 408 + Math.random() * 5,    // Simulated
+          timestamp: data.timestamp,
+        };
+      }
+
+      // Handle Wheretheiss format (fallback)
       if (data && data.latitude !== undefined) {
         return {
           latitude: parseFloat(data.latitude),
