@@ -7,18 +7,49 @@ const CATEGORY_COLORS = {
 
 const CATEGORY_EMOJI = { space: '🚀', tech: '💻' };
 
-export default function NewsCard({ article }) {
-  const { title, description, author, source, date, category } = article;
+export default function NewsCard({ article, compact = false }) {
+  const { title, description, author, source, date, category, url } = article;
   const cc = CATEGORY_COLORS[category] || CATEGORY_COLORS.tech;
   const emoji = CATEGORY_EMOJI[category] || '📰';
 
   const formatted = date
-    ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? new Date(date).toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : '';
+
+  if (compact) {
+    return (
+      <div 
+        className="card" 
+        onClick={() => window.open(url, '_blank')}
+        style={{ 
+          display: 'flex', gap: 16, padding: 12, alignItems: 'center', cursor: 'pointer',
+          background: 'var(--color-bg-card)', border: '1px solid var(--color-border)'
+        }}
+      >
+        <div style={{ 
+          width: 60, height: 60, borderRadius: 8, background: cc.bg, 
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 
+        }}>
+          {emoji}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#3182ce', textTransform: 'uppercase' }}>{source}</span>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatted}</span>
+          </div>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 2 }}>{title}</h3>
+        </div>
+        <div style={{ color: 'var(--color-text-muted)' }}>
+          <ExternalLink size={14} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <article
       className="card"
+      onClick={() => window.open(url, '_blank')}
       style={{
         padding: 0,
         overflow: 'hidden',

@@ -9,6 +9,8 @@ import Charts from './pages/Charts';
 import ChatWindow from './components/ChatWindow';
 import './index.css';
 
+import MissionControl from './pages/MissionControl';
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -16,7 +18,8 @@ export default function App() {
         <ToastProvider>
           <Routes>
             <Route path="/" element={<MainLayout />}>
-              <Route index element={<ISSTracker />} />
+              <Route index element={<MissionControl />} />
+              <Route path="tracker" element={<ISSTracker />} />
               <Route path="news" element={<NewsDashboard />} />
               <Route path="chatbot" element={<Chatbot />} />
               <Route path="charts" element={<Charts />} />

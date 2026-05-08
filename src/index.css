@@ -20,15 +20,15 @@
 }
 
 .light {
-  --color-bg-primary: #f0f4ff;
-  --color-bg-secondary: #e8edf8;
+  --color-bg-primary: #fdf6f0;
+  --color-bg-secondary: #f9f3ee;
   --color-bg-card: #ffffff;
-  --color-border: #d1daf0;
-  --color-accent: #3b82f6;
-  --color-accent-glow: rgba(59, 130, 246, 0.15);
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #334155;
-  --color-text-muted: #64748b;
+  --color-border: #ede4dc;
+  --color-accent: #3182ce;
+  --color-accent-glow: rgba(49, 130, 206, 0.1);
+  --color-text-primary: #1a202c;
+  --color-text-secondary: #4a5568;
+  --color-text-muted: #718096;
 }
 
 * {
