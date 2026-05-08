@@ -10,10 +10,12 @@ export const issService = {
    */
   async fetchISSLocation() {
     const data = await fetchData(ISS_NOW_URL);
-    if (data && data.latitude && data.longitude) {
+    if (data && data.latitude !== undefined) {
       return {
         latitude: parseFloat(data.latitude),
         longitude: parseFloat(data.longitude),
+        velocity: parseFloat(data.velocity),
+        altitude: parseFloat(data.altitude),
         timestamp: data.timestamp,
       };
     }

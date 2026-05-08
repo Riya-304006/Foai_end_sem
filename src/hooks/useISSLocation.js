@@ -8,7 +8,12 @@ const POLL_INTERVAL = 15000; // 15 seconds
  * @returns {Object} { location: { latitude, longitude }, loading, error, lastUpdated, refreshLocation }
  */
 export function useISSLocation() {
-  const [location, setLocation] = useState({ latitude: null, longitude: null });
+  const [location, setLocation] = useState({ 
+    latitude: null, 
+    longitude: null, 
+    velocity: null, 
+    altitude: null 
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -19,6 +24,8 @@ export function useISSLocation() {
       setLocation({
         latitude: data.latitude,
         longitude: data.longitude,
+        velocity: data.velocity,
+        altitude: data.altitude,
       });
       setLastUpdated(new Date());
       setError(null);

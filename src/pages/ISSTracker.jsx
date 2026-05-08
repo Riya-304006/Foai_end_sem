@@ -4,6 +4,7 @@ import { useISSLocation } from '../hooks/useISSLocation';
 import { useISSHistory } from '../hooks/useISSHistory';
 import { useAstronauts } from '../hooks/useAstronauts';
 import ISSMap from '../map/ISSMap';
+import VelocityChart from '../components/VelocityChart';
 
 export default function ISSTracker() {
   const { location, loading: locationLoading, error: locationError, lastUpdated, refreshLocation } = useISSLocation();
@@ -55,13 +56,14 @@ export default function ISSTracker() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <ISSCard icon={<MapPin size={18} style={{ color: '#60a5fa' }} />} label="Latitude"  value={location.latitude !== null ? `${location.latitude.toFixed(4)}°` : '---'}   sub="North/South" color="blue" />
         <ISSCard icon={<Navigation size={18} style={{ color: '#a78bfa' }} />} label="Longitude" value={location.longitude !== null ? `${location.longitude.toFixed(4)}°` : '---'}  sub="East/West"  color="purple" />
-        <ISSCard icon={<Zap size={18} style={{ color: '#34d399' }} />}    label="Velocity"  value="~27,600 km/h" sub="Orbital Speed" color="green" />
-        <ISSCard icon={<Globe2 size={18} style={{ color: '#22d3ee' }} />}  label="Altitude"  value="~408 km"  sub="Above Sea Level"  color="cyan" />
+        <ISSCard icon={<Zap size={18} style={{ color: '#34d399' }} />}    label="Velocity"  value={location.velocity !== null ? `${Math.round(location.velocity).toLocaleString()} km/h` : '---'} sub="Orbital Speed" color="green" />
+        <ISSCard icon={<Globe2 size={18} style={{ color: '#22d3ee' }} />}  label="Altitude"  value={location.altitude !== null ? `${Math.round(location.altitude).toLocaleString()} km` : '---'}  sub="Above Sea Level"  color="cyan" />
       </div>
 
-      {/* Map placeholder + Location */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
-        <div className="card" style={{ minHeight: 400, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 0 }}>
+      {/* Map + Velocity Chart + Location Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 340px', gap: 20 }}>
+        {/* MAP COLUMN */}
+        <div className="card" style={{ minHeight: 450, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 0 }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg-primary)', zIndex: 10 }}>
             <Globe2 size={16} style={{ color: '#60a5fa' }} />
             <span style={{ fontWeight: 600, fontSize: 14 }}>Live Leaflet Map</span>
@@ -70,6 +72,11 @@ export default function ISSTracker() {
           <div style={{ flex: 1, position: 'relative' }}>
             <ISSMap location={location} history={history} lastUpdated={lastUpdated} />
           </div>
+        </div>
+
+        {/* VELOCITY CHART COLUMN [NEW] */}
+        <div style={{ minHeight: 450 }}>
+          <VelocityChart history={history} />
         </div>
 
         {/* Right column: Stats & Path */}
@@ -112,7 +119,7 @@ export default function ISSTracker() {
               <span style={{ fontWeight: 600, fontSize: 14 }}>Tracking Path</span>
               <span className="badge badge-blue" style={{ marginLeft: 'auto' }}>{history.length} Points</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 200, overflowY: 'auto', paddingRight: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 180, overflowY: 'auto', paddingRight: 4 }}>
               {history.length > 0 ? (
                 [...history].reverse().map((pos, i) => (
                   <div key={i} style={{
