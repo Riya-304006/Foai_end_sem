@@ -86,6 +86,22 @@ export const aiService = {
         const speedStr = speed ? `${speed} km/h` : 'Unknown';
         const headlines = (newsArticles || []).slice(0, 3).map(a => `- ${a.title}`).join('\n');
 
+        // Construct and clean message history
+        const cleanedMessages = messages
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .map(m => ({ role: m.role, content: m.content }));
+
+        while (cleanedMessages.length > 0 && cleanedMessages[0].role !== 'user') {
+          cleanedMessages.shift();
+        }
+
+        const alternating = [];
+        cleanedMessages.forEach(msg => {
+          if (alternating.length === 0 || alternating[alternating.length - 1].role !== msg.role) {
+            alternating.push(msg);
+          }
+        });
+
         const result = await hf.chatCompletion({
           model: MODEL_ID,
           messages: [
@@ -93,7 +109,7 @@ export const aiService = {
               role: 'system',
               content: `You are the Space Dashboard AI. Only use this data: ISS ${locationStr}, Speed ${speedStr}, Astronauts ${astronautsCount || 0}, News: ${headlines}.`
             },
-            ...messages.slice(-6).map(m => ({ role: m.role, content: m.content }))
+            ...alternating.slice(-6)
           ],
           max_tokens: 150,
           temperature: 0.1,

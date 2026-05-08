@@ -44,10 +44,27 @@ RULES:
 3. Keep it brief.`
     };
 
-    // Construct full message history for the conversational task
+    // Construct full message history and ensure it starts with 'user' and alternates
+    const filteredMessages = messages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .map(m => ({ role: m.role, content: m.content }));
+
+    // Ensure the conversation starts with a user message
+    while (filteredMessages.length > 0 && filteredMessages[0].role !== 'user') {
+      filteredMessages.shift();
+    }
+
+    // Strictly alternate roles (remove consecutive same roles)
+    const alternatingMessages = [];
+    filteredMessages.forEach(msg => {
+      if (alternatingMessages.length === 0 || alternatingMessages[alternatingMessages.length - 1].role !== msg.role) {
+        alternatingMessages.push(msg);
+      }
+    });
+
     const chatMessages = [
       systemMessage,
-      ...messages.slice(-6).map(m => ({ role: m.role, content: m.content }))
+      ...alternatingMessages.slice(-6) // Keep it focused
     ];
 
     const result = await hf.chatCompletion({
