@@ -59,68 +59,63 @@ function formatHistory(messages, contextData) {
 
 export const aiService = {
   /**
-   * Send a chat request to Hugging Face
-   * @param {Array} messages - Chat history [{ role: 'user'|'assistant', content: '...' }]
-   * @param {Object} contextData - Current live dashboard data
-   * @returns {Promise<string>} AI response text
+   * Send a chat request. 
+   * Now uses an internal Netlify function to proxy the request for better reliability.
    */
   async sendChat(messages, contextData) {
-    const rawToken = import.meta.env.VITE_AI_TOKEN;
-    const token = rawToken ? rawToken.trim() : null;
-
-    if (!token || token === 'your_huggingface_token' || token === '') {
-      throw new Error('AI Token is missing. Please add VITE_AI_TOKEN to your .env file (local) or Netlify Environment Variables (deployed).');
-    }
-
-    const prompt = formatHistory(messages, contextData);
-
     try {
-      const response = await fetch(API_URL, {
+      // In local dev, we might still want to hit HF directly if functions aren't running,
+      // but for production reliability, we hit our own endpoint.
+      const isLocal = window.location.hostname === 'localhost';
+      const endpoint = isLocal ? API_URL : '/.netlify/functions/chat';
+      
+      const headers = { 'Content-Type': 'application/json' };
+      
+      // If hitting HF directly (local), we need the token in headers
+      if (isLocal) {
+        const token = import.meta.env.VITE_AI_TOKEN?.trim();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 150,
-            temperature: 0.1,
-            return_full_text: false,
-          },
-          options: {
-            wait_for_model: true,
-            use_cache: false,
-          }
+          messages,
+          contextData,
+          // If local, we pass the prompt format HF expects
+          ...(isLocal && { 
+            inputs: formatHistory(messages, contextData),
+            parameters: { max_new_tokens: 150, temperature: 0.1, return_full_text: false },
+            options: { wait_for_model: true }
+          })
         }),
       });
 
       if (!response.ok) {
-        let errorMessage = `API request failed with status ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          // Fallback if response is not JSON
-        }
-        
-        if (response.status === 503) {
-          throw new Error('The AI model is currently loading. Please wait a few seconds and try again.');
-        }
-        
-        throw new Error(errorMessage);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Request failed with status ${response.status}`);
       }
 
       const data = await response.json();
       
-      if (Array.isArray(data) && data[0] && data[0].generated_text) {
+      // Handle response format from both HF (direct) and our Proxy
+      if (Array.isArray(data) && data[0]?.generated_text) {
         return data[0].generated_text.trim();
       }
+      if (data.generated_text) {
+        return data.generated_text.trim();
+      }
+      // If we used a chat completion format in the proxy
+      if (data.choices?.[0]?.message?.content) {
+        return data.choices[0].message.content.trim();
+      }
 
-      throw new Error('Invalid response format from AI API.');
+      throw new Error('Invalid response format from AI.');
     } catch (error) {
+      console.error('AI Service Error:', error);
       if (error.message === 'Failed to fetch') {
-        throw new Error('Network error: The request to Hugging Face was blocked or failed. Please check your internet connection or disable any ad-blockers.');
+        throw new Error('Connection error. If you have an ad-blocker, please disable it for this site or check your connection.');
       }
       throw error;
     }
