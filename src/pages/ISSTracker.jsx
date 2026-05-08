@@ -1,33 +1,24 @@
-import { Satellite, RefreshCw, MapPin, Zap, Users, Globe2, Clock, Navigation } from 'lucide-react';
+import { Satellite, RefreshCw, MapPin, Zap, Users, Globe2, Clock, Navigation, History } from 'lucide-react';
 import ISSCard from '../components/ISSCard';
-
-const DUMMY_ISS = {
-  latitude: 28.6139,
-  longitude: 77.2090,
-  speed: 27576,
-  altitude: 408,
-  location: 'Over India (New Delhi region)',
-  timestamp: new Date().toLocaleTimeString(),
-};
-
-const DUMMY_ASTRONAUTS = [
-  { name: 'Sunita Williams',    craft: 'ISS', flag: '🇺🇸' },
-  { name: 'Butch Wilmore',      craft: 'ISS', flag: '🇺🇸' },
-  { name: 'Aleksandr Gorbunov', craft: 'ISS', flag: '🇷🇺' },
-  { name: 'Oleg Kononenko',     craft: 'ISS', flag: '🇷🇺' },
-  { name: 'Nikolai Chub',       craft: 'ISS', flag: '🇷🇺' },
-  { name: 'Tracy Dyson',        craft: 'ISS', flag: '🇺🇸' },
-  { name: 'Don Pettit',         craft: 'ISS', flag: '🇺🇸' },
-];
-
-const DUMMY_POSITIONS = [
-  { lat: 22.0, lng: 65.0 },
-  { lat: 24.0, lng: 68.5 },
-  { lat: 26.2, lng: 72.0 },
-  { lat: 28.6, lng: 77.2 },
-];
+import { useISSLocation } from '../hooks/useISSLocation';
+import { useISSHistory } from '../hooks/useISSHistory';
+import { useAstronauts } from '../hooks/useAstronauts';
+import ISSMap from '../map/ISSMap';
 
 export default function ISSTracker() {
+  const { location, loading: locationLoading, error: locationError, lastUpdated, refreshLocation } = useISSLocation();
+  const history = useISSHistory(location);
+  const { count, people, loading: crewLoading, error: crewError, refresh: refreshCrew } = useAstronauts();
+
+  const handleRefresh = () => {
+    refreshLocation();
+    refreshCrew();
+  };
+
+  const formattedTime = lastUpdated 
+    ? lastUpdated.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '---';
+
   return (
     <div className="animate-fadeInUp" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Page Header */}
@@ -38,186 +29,186 @@ export default function ISSTracker() {
               <Satellite size={22} style={{ color: '#60a5fa' }} />
             </div>
             <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: 22, fontWeight: 700 }}>ISS Live Tracker</h1>
-            <span className="badge badge-green">
+            <span className="badge badge-green animate-pulse-soft">
               <span className="pulse-dot" style={{ width: 6, height: 6 }} />
               Live
             </span>
           </div>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>
-            Real-time International Space Station tracking — updates every 15 seconds
+            Real-time International Space Station tracking — Updated at: <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{formattedTime}</span>
           </p>
         </div>
-        <button className="btn btn-primary" id="iss-refresh-btn">
-          <RefreshCw size={15} />
-          Refresh
+        <button className="btn btn-primary" onClick={handleRefresh} id="iss-refresh-btn" disabled={locationLoading}>
+          <RefreshCw size={15} className={locationLoading ? 'animate-spin' : ''} />
+          {locationLoading ? 'Updating...' : 'Refresh Now'}
         </button>
       </div>
 
+      {locationError && (
+        <div className="card" style={{ padding: 14, background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Zap size={18} />
+          <span>Error loading ISS data: {locationError}</span>
+        </div>
+      )}
+
       {/* Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-        <ISSCard icon={<MapPin size={18} style={{ color: '#60a5fa' }} />} label="Latitude"  value={`${DUMMY_ISS.latitude}°`}   sub="North" color="blue" />
-        <ISSCard icon={<Navigation size={18} style={{ color: '#a78bfa' }} />} label="Longitude" value={`${DUMMY_ISS.longitude}°`}  sub="East"  color="purple" />
-        <ISSCard icon={<Zap size={18} style={{ color: '#34d399' }} />}    label="Speed"     value={`${DUMMY_ISS.speed.toLocaleString()} km/h`} sub="Orbital velocity" color="green" />
-        <ISSCard icon={<Globe2 size={18} style={{ color: '#22d3ee' }} />}  label="Altitude"  value={`${DUMMY_ISS.altitude} km`}  sub="Above Earth"  color="cyan" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+        <ISSCard icon={<MapPin size={18} style={{ color: '#60a5fa' }} />} label="Latitude"  value={location.latitude !== null ? `${location.latitude.toFixed(4)}°` : '---'}   sub="North/South" color="blue" />
+        <ISSCard icon={<Navigation size={18} style={{ color: '#a78bfa' }} />} label="Longitude" value={location.longitude !== null ? `${location.longitude.toFixed(4)}°` : '---'}  sub="East/West"  color="purple" />
+        <ISSCard icon={<Zap size={18} style={{ color: '#34d399' }} />}    label="Velocity"  value="~27,600 km/h" sub="Orbital Speed" color="green" />
+        <ISSCard icon={<Globe2 size={18} style={{ color: '#22d3ee' }} />}  label="Altitude"  value="~408 km"  sub="Above Sea Level"  color="cyan" />
       </div>
 
       {/* Map placeholder + Location */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
-        {/* Map */}
-        <div className="card" style={{ minHeight: 360, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
+        <div className="card" style={{ minHeight: 400, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 0 }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg-primary)', zIndex: 10 }}>
             <Globe2 size={16} style={{ color: '#60a5fa' }} />
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Live Map</span>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-muted)' }}>Leaflet.js — Phase 2</span>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Live Leaflet Map</span>
+            <div className="badge badge-green animate-pulse-soft" style={{ marginLeft: 'auto', fontSize: 10 }}>Interactive Mode</div>
           </div>
-          <div style={{
-            flex: 1,
-            background: 'linear-gradient(135deg, rgba(59,130,246,0.05), rgba(139,92,246,0.05))',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            minHeight: 300,
-          }}>
-            {/* Animated ISS orbit preview */}
-            <div style={{ position: 'relative', width: 200, height: 200 }}>
-              <div style={{
-                position: 'absolute', inset: 0,
-                borderRadius: '50%',
-                border: '1px dashed rgba(59,130,246,0.3)',
-              }} />
-              <div style={{
-                position: 'absolute', inset: 20,
-                borderRadius: '50%',
-                border: '1px dashed rgba(139,92,246,0.2)',
-              }} />
-              {/* Earth */}
-              <div style={{
-                position: 'absolute',
-                top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 60, height: 60,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1d4ed8, #059669)',
-                boxShadow: '0 0 20px rgba(59,130,246,0.4)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 28,
-              }}>🌍</div>
-              {/* ISS dot */}
-              <div className="animate-float" style={{
-                position: 'absolute',
-                top: 0, left: '50%',
-                transform: 'translateX(-50%)',
-                width: 28, height: 28,
-                borderRadius: '50%',
-                background: 'rgba(59,130,246,0.2)',
-                border: '2px solid #3b82f6',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 16,
-              }}>🛰️</div>
-            </div>
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>
-              Interactive Leaflet map with live ISS position<br/>trail will be enabled in Phase 2
-            </p>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <ISSMap location={location} history={history} lastUpdated={lastUpdated} />
           </div>
         </div>
 
-        {/* Right column: Location + Path */}
+        {/* Right column: Stats & Path */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Current Location */}
+          {/* Detailed Position */}
           <div className="card" style={{ padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <MapPin size={16} style={{ color: '#60a5fa' }} />
-              <span style={{ fontWeight: 600, fontSize: 14 }}>Nearest Location</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+              <History size={16} style={{ color: '#60a5fa' }} />
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Real-Time Telemetry</span>
             </div>
-            <div style={{
-              padding: 14,
-              borderRadius: 10,
-              background: 'rgba(59,130,246,0.06)',
-              border: '1px solid rgba(59,130,246,0.15)',
-              marginBottom: 12,
-            }}>
-              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>
-                {DUMMY_ISS.location}
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Reverse geocoded via Nominatim</p>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ flex: 1, padding: '10px 12px', borderRadius: 8, background: 'var(--color-bg-secondary)', textAlign: 'center' }}>
-                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>LAT</p>
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#60a5fa' }}>{DUMMY_ISS.latitude}°</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ padding: 12, borderRadius: 10, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.1)' }}>
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Latitude</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: '#60a5fa' }}>{location.latitude?.toFixed(6) || '---'}°</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>{location.latitude > 0 ? 'NORTH' : 'SOUTH'}</span>
+                </div>
               </div>
-              <div style={{ flex: 1, padding: '10px 12px', borderRadius: 8, background: 'var(--color-bg-secondary)', textAlign: 'center' }}>
-                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>LON</p>
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#a78bfa' }}>{DUMMY_ISS.longitude}°</p>
+              
+              <div style={{ padding: 12, borderRadius: 10, background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.1)' }}>
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Longitude</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: '#a78bfa' }}>{location.longitude?.toFixed(6) || '---'}°</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>{location.longitude > 0 ? 'EAST' : 'WEST'}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                <Clock size={12} />
+                <span>Next refresh in: <span style={{ color: 'var(--color-text-primary)' }}>15s</span></span>
               </div>
             </div>
           </div>
 
-          {/* Recent path */}
-          <div className="card" style={{ padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          {/* Historical Breadcrumbs */}
+          <div className="card" style={{ padding: 20, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <Clock size={16} style={{ color: '#f59e0b' }} />
-              <span style={{ fontWeight: 600, fontSize: 14 }}>Recent Path</span>
-              <span className="badge badge-blue" style={{ marginLeft: 'auto' }}>Last 4</span>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Tracking Path</span>
+              <span className="badge badge-blue" style={{ marginLeft: 'auto' }}>{history.length} Points</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {DUMMY_POSITIONS.map((pos, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  background: i === DUMMY_POSITIONS.length - 1 ? 'rgba(59,130,246,0.1)' : 'var(--color-bg-secondary)',
-                  border: i === DUMMY_POSITIONS.length - 1 ? '1px solid rgba(59,130,246,0.25)' : '1px solid transparent',
-                }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: i === DUMMY_POSITIONS.length - 1 ? '#3b82f6' : 'var(--color-text-muted)' }} />
-                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
-                    {pos.lat.toFixed(1)}°, {pos.lng.toFixed(1)}°
-                  </span>
-                  {i === DUMMY_POSITIONS.length - 1 && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#60a5fa', fontWeight: 600 }}>NOW</span>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 200, overflowY: 'auto', paddingRight: 4 }}>
+              {history.length > 0 ? (
+                [...history].reverse().map((pos, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    background: i === 0 ? 'rgba(59,130,246,0.1)' : 'var(--color-bg-secondary)',
+                    border: i === 0 ? '1px solid rgba(59,130,246,0.2)' : '1px solid transparent',
+                  }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? '#3b82f6' : 'var(--color-text-muted)', boxShadow: i === 0 ? '0 0 8px #3b82f6' : 'none' }} />
+                    <span style={{ fontSize: 12, color: i === 0 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', fontFamily: 'monospace', fontWeight: i === 0 ? 700 : 400 }}>
+                      {pos.latitude.toFixed(3)}°, {pos.longitude.toFixed(3)}°
+                    </span>
+                    {i === 0 && <span style={{ marginLeft: 'auto', fontSize: 9, color: '#3b82f6', fontWeight: 800 }}>LATEST</span>}
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Waiting for telemetry...</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Astronauts */}
+      {/* Crew in Space */}
       <div className="card" style={{ padding: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <Users size={18} style={{ color: '#a78bfa' }} />
-          <h2 style={{ fontSize: 16, fontWeight: 700 }}>Crew in Space</h2>
-          <span className="badge badge-purple">{DUMMY_ASTRONAUTS.length} People</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-          {DUMMY_ASTRONAUTS.map((astronaut, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '12px 16px',
-              borderRadius: 12,
-              background: 'var(--color-bg-secondary)',
-              border: '1px solid var(--color-border)',
-              transition: 'all 0.2s',
-            }}
-              className="card"
-            >
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(139,92,246,0.3), rgba(59,130,246,0.3))',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20,
-                border: '2px solid rgba(139,92,246,0.3)',
-              }}>
-                {astronaut.flag}
-              </div>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{astronaut.name}</p>
-                <p style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{astronaut.craft}</p>
-              </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ padding: 8, borderRadius: 10, background: 'rgba(167,139,250,0.15)' }}>
+              <Users size={20} style={{ color: '#a78bfa' }} />
             </div>
-          ))}
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 700 }}>Personnel in Orbit</h2>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Current active crew members across all crafts</p>
+            </div>
+          </div>
+          <div className="badge badge-purple" style={{ padding: '6px 16px', fontSize: 14 }}>{crewLoading ? '...' : count} Total</div>
         </div>
+
+        {crewError ? (
+          <div style={{ padding: 20, borderRadius: 12, background: 'rgba(239,68,68,0.05)', border: '1px dashed rgba(239,68,68,0.2)', textAlign: 'center', color: '#ef4444' }}>
+            <p>Failed to retrieve crew roster. Please check connection.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            {crewLoading ? (
+              Array(6).fill(0).map((_, i) => (
+                <div key={i} className="card skeleton" style={{ height: 70, borderRadius: 14 }} />
+              ))
+            ) : (
+              people.map((astronaut, i) => (
+                <div key={i} className="card" style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '14px 18px',
+                  borderRadius: 14,
+                  background: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-border)',
+                  transition: 'all 0.3s ease',
+                  cursor: 'default',
+                }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.borderColor = 'rgba(167,139,250,0.4)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12,
+                    background: 'linear-gradient(135deg, rgba(167,139,250,0.2), rgba(59,130,246,0.2))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22,
+                    border: '1px solid rgba(167,139,250,0.2)',
+                  }}>
+                    👨‍🚀
+                  </div>
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {astronaut.name}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Satellite size={10} style={{ color: 'var(--color-text-muted)' }} />
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600 }}>{astronaut.craft}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

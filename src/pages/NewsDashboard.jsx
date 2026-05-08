@@ -1,76 +1,191 @@
-import { Newspaper, Search, RefreshCw, SlidersHorizontal } from 'lucide-react';
+import { Newspaper, Search, RefreshCw, SlidersHorizontal, ArrowUpDown, Calendar, LayoutGrid } from 'lucide-react';
 import NewsCard from '../components/NewsCard';
-
-const DUMMY_NEWS = [
-  { id: 1, category: 'space', title: 'NASA Artemis III Mission Set to Land Astronauts on Moon by 2026', description: 'NASA confirms Artemis III will carry the first woman and first person of color to the lunar surface, targeting the South Pole region for water ice exploration.', author: 'Sarah Mitchell', source: 'NASA.gov', date: '2026-05-07', image: null },
-  { id: 2, category: 'space', title: 'SpaceX Starship Completes Seventh Integrated Flight Test Successfully', description: 'SpaceX achieves another milestone as Starship completes full flight profile with both stages returning for successful landings.', author: 'James Carter', source: 'SpaceNews', date: '2026-05-06', image: null },
-  { id: 3, category: 'space', title: 'James Webb Telescope Discovers Exoplanet With Potential Biosignatures', description: 'JWST detects methane and carbon dioxide in the atmosphere of a rocky exoplanet 120 light-years away, hinting at possible biological activity.', author: 'Dr. Elena Ross', source: 'Nature Astronomy', date: '2026-05-05', image: null },
-  { id: 4, category: 'space', title: "China's Tiangong Station Expands With New Science Module", description: "China launches the Mengshi science module, significantly expanding Tiangong's research capabilities and crew quarters.", author: 'Li Wei', source: 'Xinhua', date: '2026-05-04', image: null },
-  { id: 5, category: 'space', title: 'ISS Extended to 2035 as NASA and Partners Agree on New Timeline', description: 'International partners officially agree to extend ISS operations through 2035, ensuring a smooth transition to commercial space stations.', author: 'Mark Johnson', source: 'Space.com', date: '2026-05-03', image: null },
-  { id: 6, category: 'tech', title: 'OpenAI Releases GPT-5 With Unprecedented Reasoning Capabilities', description: 'GPT-5 demonstrates human-level performance on complex multi-step reasoning tasks, scoring in the 95th percentile on standardized tests.', author: 'Alex Turner', source: 'TechCrunch', date: '2026-05-07', image: null },
-  { id: 7, category: 'tech', title: 'Apple Vision Pro 2 Launched With Neural Interface Support', description: "Apple's second-generation mixed reality headset introduces non-invasive neural interface support for hands-free control.", author: 'Michelle Park', source: 'The Verge', date: '2026-05-06', image: null },
-  { id: 8, category: 'tech', title: 'Quantum Computing Achieves 1 Million Qubit Milestone', description: 'IBM announces QSystem Two reaches one million stable qubits, a threshold researchers believe will enable practical quantum advantage.', author: 'Dr. Sam Lee', source: 'Wired', date: '2026-05-05', image: null },
-  { id: 9, category: 'tech', title: 'Tesla Launches Full Self-Driving Version 14 Globally', description: "Tesla's FSD v14 rolls out in 40 countries simultaneously, claiming zero intervention required in 99.8% of real-world driving scenarios.", author: 'Ryan Brooks', source: 'Electrek', date: '2026-05-04', image: null },
-  { id: 10, category: 'tech', title: 'NVIDIA Blackwell Ultra GPU Breaks All Benchmark Records', description: "NVIDIA's latest flagship GPU delivers 10x performance improvement for AI training workloads over its predecessor.", author: 'Tom Hardy', source: 'AnandTech', date: '2026-05-03', image: null },
-];
+import { useNews } from '../hooks/useNews';
 
 export default function NewsDashboard() {
+  const { 
+    filteredArticles, 
+    loading, 
+    error, 
+    lastUpdated,
+    search, 
+    setSearch, 
+    sortBy, 
+    setSortBy, 
+    refresh 
+  } = useNews();
+
+  const spaceArticles = filteredArticles.filter(n => n.category === 'space');
+  const techArticles = filteredArticles.filter(n => n.category === 'tech');
+
+  const formattedTime = lastUpdated 
+    ? lastUpdated.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' })
+    : '---';
+
   return (
     <div className="animate-fadeInUp" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <div style={{ padding: 8, borderRadius: 12, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)' }}>
-              <Newspaper size={22} style={{ color: '#a78bfa' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <div style={{ padding: 10, borderRadius: 14, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)' }}>
+              <Newspaper size={24} style={{ color: '#a78bfa' }} />
             </div>
-            <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: 22, fontWeight: 700 }}>News Dashboard</h1>
+            <div>
+              <h1 style={{ fontFamily: "'Orbitron', monospace", fontSize: 24, fontWeight: 800 }}>News Dashboard</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <span className="badge badge-purple" style={{ fontSize: 9 }}>Auto-Sync Enabled</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  Refreshed: <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{formattedTime}</span>
+                </span>
+              </div>
+            </div>
           </div>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Latest Space &amp; Tech headlines — cached for 15 minutes</p>
         </div>
-        <button className="btn btn-primary" id="news-refresh-btn"><RefreshCw size={15} />Refresh</button>
+        <button 
+          className="btn btn-primary" 
+          onClick={refresh} 
+          disabled={loading}
+          style={{ minWidth: 130 }}
+        >
+          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          {loading ? 'Fetching...' : 'Force Refresh'}
+        </button>
       </div>
 
-      <div className="card" style={{ padding: 16 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
-            <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-            <input id="news-search" placeholder="Search articles..." style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: 14, outline: 'none' }} />
+      {/* Search & Filters */}
+      <div className="card" style={{ padding: 20 }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: 260, position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+            <input 
+              id="news-search" 
+              placeholder="Search by title, topic or source..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ 
+                width: '100%', 
+                padding: '12px 16px 12px 42px', 
+                borderRadius: 12, 
+                border: '1px solid var(--color-border)', 
+                background: 'var(--color-bg-secondary)', 
+                color: 'var(--color-text-primary)', 
+                fontSize: 14, 
+                outline: 'none',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={e => e.target.style.borderColor = '#60a5fa'}
+              onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+            />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <SlidersHorizontal size={15} style={{ color: 'var(--color-text-muted)' }} />
-            <select id="news-sort" style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: 13, outline: 'none', cursor: 'pointer' }}>
-              <option value="date">Date (Newest)</option>
-              <option value="date-asc">Date (Oldest)</option>
-              <option value="source">Source (A–Z)</option>
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="badge badge-blue" style={{ cursor: 'pointer', padding: '6px 14px' }} id="filter-all">All (10)</button>
-            <button className="badge badge-cyan" style={{ cursor: 'pointer', padding: '6px 14px' }} id="filter-space">🚀 Space</button>
-            <button className="badge badge-purple" style={{ cursor: 'pointer', padding: '6px 14px' }} id="filter-tech">💻 Tech</button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg-secondary)', padding: '4px 12px', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+              <ArrowUpDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>Sort:</span>
+              <select 
+                id="news-sort" 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                style={{ 
+                  padding: '8px 4px', 
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-text-primary)', 
+                  fontSize: 13, 
+                  fontWeight: 600,
+                  outline: 'none', 
+                  cursor: 'pointer' 
+                }}
+              >
+                <option value="date">Newest First</option>
+                <option value="source">Source A–Z</option>
+              </select>
+            </div>
+            
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div className="badge badge-blue" style={{ padding: '8px 14px' }}>
+                <LayoutGrid size={12} />
+                All ({filteredArticles.length})
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <span style={{ fontSize: 20 }}>🚀</span>
-          <h2 style={{ fontSize: 16, fontWeight: 700 }}>Space News</h2>
-          <span className="badge badge-cyan">5 articles</span>
+      {error && (
+        <div className="card" style={{ padding: 16, background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.2)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <SlidersHorizontal size={20} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>Connectivity Issue</p>
+            <p style={{ fontSize: 13 }}>{error}. Articles shown may be outdated.</p>
+          </div>
+          <button className="btn btn-secondary" onClick={refresh} style={{ padding: '6px 12px', fontSize: 12 }}>Retry</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, marginBottom: 32 }}>
-          {DUMMY_NEWS.filter(n => n.category === 'space').map(a => <NewsCard key={a.id} article={a} />)}
-        </div>
+      )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <span style={{ fontSize: 20 }}>💻</span>
-          <h2 style={{ fontSize: 16, fontWeight: 700 }}>Tech News</h2>
-          <span className="badge badge-purple">5 articles</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {DUMMY_NEWS.filter(n => n.category === 'tech').map(a => <NewsCard key={a.id} article={a} />)}
-        </div>
+      {/* Main Content */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+        {/* Space News Section */}
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(34,211,238,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🚀</div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '0.02em' }}>Deep Space Explorations</h2>
+            </div>
+            <span className="badge badge-cyan" style={{ fontSize: 10 }}>{spaceArticles.length} FOUND</span>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+            {loading && filteredArticles.length === 0 ? (
+              Array(3).fill(0).map((_, i) => (
+                <div key={i} className="card skeleton" style={{ height: 300, borderRadius: 16 }} />
+              ))
+            ) : spaceArticles.length > 0 ? (
+              spaceArticles.map(a => <NewsCard key={a.id} article={a} />)
+            ) : (
+              <div className="card" style={{ gridColumn: '1 / -1', padding: '40px 0', textAlign: 'center', background: 'rgba(59,130,246,0.02)', border: '1px dashed var(--color-border)' }}>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No space-related articles found matching your criteria.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Tech News Section */}
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(167,139,250,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>💻</div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '0.02em' }}>Future Tech & AI</h2>
+            </div>
+            <span className="badge badge-purple" style={{ fontSize: 10 }}>{techArticles.length} FOUND</span>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+            {loading && filteredArticles.length === 0 ? (
+              Array(3).fill(0).map((_, i) => (
+                <div key={i} className="card skeleton" style={{ height: 300, borderRadius: 16 }} />
+              ))
+            ) : techArticles.length > 0 ? (
+              techArticles.map(a => <NewsCard key={a.id} article={a} />)
+            ) : (
+              <div className="card" style={{ gridColumn: '1 / -1', padding: '40px 0', textAlign: 'center', background: 'rgba(139,92,246,0.02)', border: '1px dashed var(--color-border)' }}>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No tech-related articles found matching your criteria.</p>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
+
+      {/* Footer Meta */}
+      {!loading && filteredArticles.length > 0 && (
+        <div style={{ textAlign: 'center', padding: '20px 0', borderTop: '1px solid var(--color-border)', marginTop: 20 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Calendar size={12} />
+            Data sourced from {filteredArticles[0].url.includes('newsdata') ? 'NewsData.io' : 'NewsAPI.org'} — Total {filteredArticles.length} results indexed.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
