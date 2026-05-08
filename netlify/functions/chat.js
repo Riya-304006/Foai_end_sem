@@ -24,21 +24,42 @@ export async function handler(event) {
     }
 
     const hf = new HfInference(token);
-    const prompt = buildSystemPrompt(contextData, messages);
+    
+    // Prepare data for the system message
+    const { location, speed, astronautsCount, newsArticles } = contextData || {};
+    const locationStr = location?.latitude ? `${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° E` : 'Unknown';
+    const speedStr = speed ? `${speed} km/h` : 'Unknown';
+    const headlines = (newsArticles || []).slice(0, 3).map(a => `- ${a.title}`).join('\n');
 
-    const result = await hf.textGeneration({
+    const systemMessage = {
+      role: 'system',
+      content: `You are the Space Dashboard AI. Your ONLY knowledge is the following live telemetry:
+- ISS: ${locationStr}, Speed: ${speedStr}
+- Astronauts: ${astronautsCount || 0}
+- Recent News: ${headlines || 'No news available'}
+
+RULES:
+1. Answer ONLY using the data above.
+2. If the data is missing or question is unrelated, say: "I can only answer based on live Space Dashboard data."
+3. Keep it brief.`
+    };
+
+    // Construct full message history for the conversational task
+    const chatMessages = [
+      systemMessage,
+      ...messages.slice(-6).map(m => ({ role: m.role, content: m.content }))
+    ];
+
+    const result = await hf.chatCompletion({
       model: MODEL_ID,
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: 150,
-        temperature: 0.1,
-        return_full_text: false,
-      },
+      messages: chatMessages,
+      max_tokens: 150,
+      temperature: 0.1,
     });
 
     return {
       statusCode: 200, headers,
-      body: JSON.stringify(result),
+      body: JSON.stringify({ generated_text: result.choices[0].message.content }),
     };
 
   } catch (err) {
@@ -48,24 +69,4 @@ export async function handler(event) {
       body: JSON.stringify({ error: err.message || 'Internal AI Error' }) 
     };
   }
-}
-
-function buildSystemPrompt(contextData, messages) {
-  const { location, speed, astronautsCount, newsArticles } = contextData || {};
-  const locationStr = location?.latitude ? `${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° E` : 'Unknown';
-  const speedStr = speed ? `${speed} km/h` : 'Unknown';
-  const headlines = (newsArticles || []).slice(0, 3).map(a => `- ${a.title}`).join('\n');
-
-  const system = `[INST] You are the Space Dashboard AI. Use ONLY this data:
-- ISS: ${locationStr}, Speed: ${speedStr}
-- Astronauts: ${astronautsCount || 0}
-- News: ${headlines || 'No news'}
-If asked anything else, say you only know dashboard data. [/INST]`;
-
-  let formatted = system + '\n\n';
-  (messages || []).slice(-4).forEach(msg => {
-    if (msg.role === 'user') formatted += `[INST] ${msg.content} [/INST]\n`;
-    else formatted += `${msg.content}\n`;
-  });
-  return formatted;
 }

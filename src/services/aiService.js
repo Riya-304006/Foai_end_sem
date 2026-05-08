@@ -79,18 +79,27 @@ export const aiService = {
         }
 
         const hf = new HfInference(token);
-        const prompt = formatHistory(messages, contextData);
+        
+        // Use conversational task for better compatibility
+        const { location, speed, astronautsCount, newsArticles } = contextData || {};
+        const locationStr = location?.latitude ? `${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° E` : 'Unknown';
+        const speedStr = speed ? `${speed} km/h` : 'Unknown';
+        const headlines = (newsArticles || []).slice(0, 3).map(a => `- ${a.title}`).join('\n');
 
-        const result = await hf.textGeneration({
+        const result = await hf.chatCompletion({
           model: MODEL_ID,
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 150,
-            temperature: 0.1,
-            return_full_text: false,
-          },
+          messages: [
+            {
+              role: 'system',
+              content: `You are the Space Dashboard AI. Only use this data: ISS ${locationStr}, Speed ${speedStr}, Astronauts ${astronautsCount || 0}, News: ${headlines}.`
+            },
+            ...messages.slice(-6).map(m => ({ role: m.role, content: m.content }))
+          ],
+          max_tokens: 150,
+          temperature: 0.1,
         });
-        return result.generated_text.trim();
+        
+        return result.choices[0].message.content.trim();
       }
 
       // Production: Hit our own Netlify Function proxy
