@@ -1,4 +1,4 @@
-const API_URL = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2';
+const API_URL = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3';
 
 /**
  * Builds the system prompt restricting the AI to use only dashboard data.
@@ -65,10 +65,11 @@ export const aiService = {
    * @returns {Promise<string>} AI response text
    */
   async sendChat(messages, contextData) {
-    const token = import.meta.env.VITE_AI_TOKEN;
+    const rawToken = import.meta.env.VITE_AI_TOKEN;
+    const token = rawToken ? rawToken.trim() : null;
 
-    if (!token || token === 'your_huggingface_token') {
-      throw new Error('VITE_AI_TOKEN is not configured in .env file.');
+    if (!token || token === 'your_huggingface_token' || token === '') {
+      throw new Error('AI Token is missing. Please add VITE_AI_TOKEN to your .env file (local) or Netlify Environment Variables (deployed).');
     }
 
     const prompt = formatHistory(messages, contextData);
@@ -83,28 +84,44 @@ export const aiService = {
         body: JSON.stringify({
           inputs: prompt,
           parameters: {
-            max_new_tokens: 150, // Keep responses short and fast
-            temperature: 0.1,    // Low temperature to prevent hallucination
+            max_new_tokens: 150,
+            temperature: 0.1,
             return_full_text: false,
+          },
+          options: {
+            wait_for_model: true,
+            use_cache: false,
           }
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+        let errorMessage = `API request failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // Fallback if response is not JSON
+        }
+        
+        if (response.status === 503) {
+          throw new Error('The AI model is currently loading. Please wait a few seconds and try again.');
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       
-      // The API returns an array, we extract the generated text
       if (Array.isArray(data) && data[0] && data[0].generated_text) {
         return data[0].generated_text.trim();
       }
 
       throw new Error('Invalid response format from AI API.');
     } catch (error) {
-      console.error('AI Service Error:', error);
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Network error: The request to Hugging Face was blocked or failed. Please check your internet connection or disable any ad-blockers.');
+      }
       throw error;
     }
   }
