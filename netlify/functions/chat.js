@@ -1,4 +1,4 @@
-const API_URL = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3';
+const API_URL = 'https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct';
 
 export async function handler(event) {
   // Enable CORS
