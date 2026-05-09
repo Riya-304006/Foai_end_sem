@@ -1,4 +1,4 @@
-import { Menu, Sun, Moon, Satellite, Bell } from 'lucide-react';
+import { Sun, Moon, Satellite, Bell } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Navbar({ onMenuClick }) {
@@ -24,15 +24,6 @@ export default function Navbar({ onMenuClick }) {
       }}
       className="light-navbar"
     >
-      {/* Mobile menu button */}
-      <button
-        onClick={onMenuClick}
-        className="btn btn-ghost md:hidden"
-        style={{ padding: '8px', borderRadius: 10 }}
-        id="menu-toggle"
-      >
-        <Menu size={20} />
-      </button>
 
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>

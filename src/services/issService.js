@@ -1,66 +1,10 @@
 import { fetchData } from '../utils/apiHelpers';
 
-const ISS_NOW_URL = 'https://api.open-notify.org/iss-now.json';
 const ASTROS_URL = 'https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json';
 
 // Simple rate limit protection
 let lastFetchTime = 0;
-const MIN_FETCH_INTERVAL = 2000; // 2 seconds minimum between any calls
-
-export const issService = {
-  /**
-   * Fetch current ISS location.
-   */
-  async fetchISSLocation() {
-    const isLocal = window.location.hostname === 'localhost';
-    const endpoint = isLocal ? ISS_NOW_URL : '/.netlify/functions/iss-location';
-
-    const now = Date.now();
-    // Only throttle locally; production is handled by Edge Cache
-    if (isLocal && (now - lastFetchTime < MIN_FETCH_INTERVAL)) {
-      return null;
-    }
-    
-    lastFetchTime = now;
-    
-    try {
-      // 1. Try Proxy (with Edge Caching)
-      try {
-        const response = await fetch(endpoint);
-        if (response.ok) {
-          const data = await response.json();
-          return parseISSData(data);
-        }
-      } catch (e) {
-        console.warn('Proxy failed, trying direct fetch...', e.message);
-      }
-
-      // 2. Try Direct OpenNotify (Very lenient)
-      try {
-        const response = await fetch('https://api.open-notify.org/iss-now.json');
-        if (response.ok) {
-          const data = await response.json();
-          return parseISSData(data);
-        }
-      } catch (e) {
-        console.warn('Direct OpenNotify failed, trying direct fallback...', e.message);
-      }
-
-      // 3. Last Resort: Direct Wheretheiss
-      const response = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
-      if (response.ok) {
-        const data = await response.json();
-        return parseISSData(data);
-      }
-      
-      throw new Error(`All ISS API sources failed (Last status: ${response.status})`);
-
-    } catch (err) {
-      console.error('ISS Fetch Fatal Error:', err.message);
-      throw err;
-    }
-  },
-};
+const MIN_FETCH_INTERVAL = 1500; 
 
 /**
  * Helper to parse different ISS API formats
@@ -93,18 +37,51 @@ function parseISSData(data) {
   return null;
 }
 
+export const issService = {
   /**
-   * Fetch list of people currently in space.
-   * @returns {Promise<Object>} - { count, people: [{ name, craft }, ...] }.
+   * Fetch current ISS location.
+   * Priority: Wheretheiss (Reliable) -> OpenNotify (Fallback)
    */
-  async fetchAstronauts() {
-    const data = await fetchData(ASTROS_URL);
-    if (data && data.people) {
-      return {
-        count: data.number,
-        people: data.people.map(p => ({ name: p.name, craft: p.spacecraft || 'ISS' })),
-      };
+  async fetchISSLocation() {
+    const now = Date.now();
+    if (now - lastFetchTime < MIN_FETCH_INTERVAL) {
+      return null;
     }
-    throw new Error('Unsuccessful response from Astronauts API');
+    lastFetchTime = now;
+
+    const sources = [
+      'https://api.wheretheiss.at/v1/satellites/25544',
+      'https://api.open-notify.org/iss-now.json'
+    ];
+
+    for (const url of sources) {
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          const parsed = parseISSData(data);
+          if (parsed) return parsed;
+        }
+      } catch (e) {
+        console.warn(`ISS Source ${url} failed:`, e.message);
+      }
+    }
+
+    throw new Error('All ISS telemetry sources are currently unreachable.');
+  },
+
+  async fetchAstronauts() {
+    try {
+      const data = await fetchData(ASTROS_URL);
+      if (data && data.people) {
+        return {
+          count: data.number,
+          people: data.people.map(p => ({ name: p.name, craft: p.spacecraft || 'ISS' })),
+        };
+      }
+    } catch (e) {
+      console.warn('Astronauts fetch failed:', e.message);
+    }
+    return { count: 0, people: [] };
   },
 };

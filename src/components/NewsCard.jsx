@@ -1,111 +1,121 @@
-import { ExternalLink, User, Calendar, Tag } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink, ChevronDown, Calendar, Tag, User } from 'lucide-react';
 
-const CATEGORY_COLORS = {
-  space: { bg: 'rgba(6,182,212,0.1)', color: '#22d3ee', border: 'rgba(6,182,212,0.25)' },
-  tech:  { bg: 'rgba(139,92,246,0.1)', color: '#a78bfa', border: 'rgba(139,92,246,0.25)' },
-};
+export default function NewsCard({ article, index }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const { title, description, author, source, date, category, url, urlToImage } = article;
 
-const CATEGORY_EMOJI = { space: '🚀', tech: '💻' };
+  const formattedDate = date
+    ? new Date(date).toLocaleString('en-GB', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }).replace(/\//g, '/')
+    : 'Date Unknown';
 
-export default function NewsCard({ article }) {
-  const { title, description, author, source, date, category } = article;
-  const cc = CATEGORY_COLORS[category] || CATEGORY_COLORS.tech;
-  const emoji = CATEGORY_EMOJI[category] || '📰';
-
-  const formatted = date
-    ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : '';
+  const sourceLocation = source?.toUpperCase() || 'WORLD';
 
   return (
-    <article
-      className="card"
-      style={{
-        padding: 0,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        cursor: 'pointer',
+    <div 
+      className="card" 
+      style={{ 
+        padding: 0, 
+        overflow: 'hidden', 
+        marginBottom: 12,
+        background: 'var(--color-bg-card)',
+        borderColor: isOpen ? 'rgba(239, 68, 68, 0.4)' : 'var(--color-border)',
+        boxShadow: isOpen ? '0 4px 12px rgba(239, 68, 68, 0.05)' : 'none'
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
     >
-      {/* Image area */}
-      <div style={{
-        height: 140,
-        background: `linear-gradient(135deg, ${cc.bg.replace('0.1', '0.2')}, rgba(17,24,39,0.8))`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 48,
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'radial-gradient(circle at 30% 50%, rgba(59,130,246,0.08), transparent 70%)',
-        }} />
-        <span style={{ position: 'relative', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}>{emoji}</span>
+      <div 
+        className={`news-item-header ${isOpen ? 'open' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {/* Number Badge */}
+        <div className="news-number">{index + 1}</div>
 
-        {/* Category badge */}
-        <div style={{
-          position: 'absolute', top: 10, right: 10,
-          padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700,
-          background: cc.bg, color: cc.color, border: `1px solid ${cc.border}`,
-          letterSpacing: '0.06em', textTransform: 'uppercase',
-        }}>
-          {category}
+        {/* Thumbnail */}
+        <div style={{ position: 'relative' }}>
+          {urlToImage ? (
+            <img src={urlToImage} alt="" className="news-thumbnail" />
+          ) : (
+            <div className="news-thumbnail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(59,130,246,0.1))', fontSize: 20 }}>
+              {category === 'space' ? '🚀' : '📰'}
+            </div>
+          )}
+        </div>
+
+        {/* Title and Metadata */}
+        <div style={{ overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#3b82f6', letterSpacing: '0.02em' }}>{sourceLocation}</span>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formattedDate}</span>
+          </div>
+          <h3 style={{ 
+            fontSize: 14, 
+            fontWeight: 700, 
+            color: 'var(--color-text-primary)',
+            whiteSpace: isOpen ? 'normal' : 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4
+          }}>
+            {title}
+          </h3>
+        </div>
+
+        {/* Chevron Toggle */}
+        <div className={`news-chevron ${isOpen ? 'open' : ''}`}>
+          <ChevronDown size={14} strokeWidth={3} />
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-        <h3 style={{
-          fontSize: 14, fontWeight: 700, lineHeight: 1.4,
-          color: 'var(--color-text-primary)',
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-        }}>
-          {title}
-        </h3>
+      {/* Expanded Content */}
+      <div className={`news-item-content ${isOpen ? 'open' : ''}`}>
+        <div style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <p style={{ 
+            fontSize: 13, 
+            lineHeight: 1.6, 
+            color: 'var(--color-text-secondary)',
+            marginBottom: 20
+          }}>
+            {description || "No further details available for this article."}
+          </p>
 
-        <p style={{
-          fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5,
-          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          flex: 1,
-        }}>
-          {description}
-        </p>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            paddingTop: 16,
+            borderTop: '1px solid var(--color-border)'
+          }}>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <User size={12} style={{ color: 'var(--color-text-muted)' }} />
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{author || 'Anonymous'}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Tag size={12} style={{ color: 'var(--color-text-muted)' }} />
+                <span className="badge badge-blue" style={{ fontSize: 9 }}>{category}</span>
+              </div>
+            </div>
 
-        {/* Meta */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <User size={11} style={{ color: 'var(--color-text-muted)' }} />
-              <span style={{ fontSize: 11, color: 'var(--color-text-muted)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {author || 'Staff Reporter'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Calendar size={11} style={{ color: 'var(--color-text-muted)' }} />
-              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatted}</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Tag size={11} style={{ color: cc.color }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: cc.color }}>{source}</span>
-            </div>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 11, color: cc.color, fontWeight: 600, padding: '2px 6px',
-              borderRadius: 6, transition: 'background 0.15s',
-            }}>
-              Read <ExternalLink size={10} />
-            </button>
+            <a 
+              href={url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="btn btn-ghost"
+              style={{ padding: '6px 12px', fontSize: 12, borderRadius: 8, borderColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Full Story <ExternalLink size={12} />
+            </a>
           </div>
         </div>
       </div>
-    </article>
+    </div>
   );
 }

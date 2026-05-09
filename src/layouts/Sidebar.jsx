@@ -3,9 +3,6 @@ import { Satellite, Newspaper, Bot, BarChart2, X, Zap } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/',        icon: Satellite,   label: 'ISS Tracker',    badge: 'Live' },
-  { to: '/news',    icon: Newspaper,   label: 'News Dashboard', badge: null },
-  { to: '/chatbot', icon: Bot,         label: 'AI Chatbot',     badge: 'AI' },
-  { to: '/charts',  icon: BarChart2,   label: 'Analytics',      badge: null },
 ];
 
 export default function Sidebar({ open, onClose }) {
